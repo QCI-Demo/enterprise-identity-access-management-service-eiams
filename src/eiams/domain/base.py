@@ -93,8 +93,40 @@ class Repository(ABC, Generic[T, ID]):
         ...
 
     @abstractmethod
+    def add(self, context: RequestContext, entity: T) -> T:
+        """Persist a new entity.
+
+        Args:
+            context: Request context for tenant scope and audit.
+            entity: The entity to create.
+
+        Returns:
+            The created entity as stored.
+
+        Raises:
+            DuplicateEntityError: If the entity conflicts with an existing one.
+        """
+        ...
+
+    @abstractmethod
+    def update(self, context: RequestContext, entity: T) -> T:
+        """Persist changes to an existing entity.
+
+        Args:
+            context: Request context for tenant scope and audit.
+            entity: The entity carrying the new state.
+
+        Returns:
+            The updated entity as stored.
+
+        Raises:
+            EntityNotFoundError: If the entity is absent from the caller's scope.
+        """
+        ...
+
+    @abstractmethod
     def save(self, context: RequestContext, entity: T) -> T:
-        """Persist an entity.
+        """Persist an entity, creating it when it does not yet exist.
 
         Args:
             context: Request context for tenant scope and audit.
