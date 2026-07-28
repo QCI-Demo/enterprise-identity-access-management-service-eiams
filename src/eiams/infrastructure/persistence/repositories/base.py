@@ -117,11 +117,20 @@ class SqlAlchemyRepository(Generic[Entity, Identifier, Model]):
             )
         return offset, limit
 
+    def _execute(self, statement: Select):
+        """Run a statement, keeping driver failures out of the caller's lap."""
+        try:
+            return self._session.execute(statement)
+        except SQLAlchemyError as error:
+            raise translate_database_error(
+                error, entity=self.__entity_name__
+            ) from error
+
     def _rows(self, statement: Select) -> Sequence[Model]:
-        return self._session.execute(statement).scalars().all()
+        return self._execute(statement).scalars().all()
 
     def _first_row(self, statement: Select) -> Model | None:
-        return self._session.execute(statement).scalars().first()
+        return self._execute(statement).scalars().first()
 
     def _entities(self, rows: Sequence[Model]) -> list[Entity]:
         return [self.__mapper__.to_entity(row) for row in rows]
@@ -130,7 +139,7 @@ class SqlAlchemyRepository(Generic[Entity, Identifier, Model]):
         statement = select(func.count()).select_from(self.__model__)
         if clause is not None:
             statement = statement.where(clause)
-        return int(self._session.execute(statement).scalar_one())
+        return int(self._execute(statement).scalar_one())
 
     def _flush(self) -> None:
         """Push pending changes so violations surface as domain errors."""

@@ -47,6 +47,7 @@ from eiams.shared.context import (
 from eiams.shared.errors import (
     AppendOnlyViolationError,
     ContextError,
+    RepositoryError,
     TenantMismatchError,
     TenantRequiredError,
     ValidationError,
@@ -326,6 +327,35 @@ class TestPageValidation:
 
         with pytest.raises(ValidationError):
             repository.find_all(tenant_context, limit=MAX_PAGE_SIZE + 1)
+
+
+class TestReadFailures:
+    """A failing read reports a repository error, not a driver exception."""
+
+    class ExplodingSession:
+        """Session whose every statement fails at the driver."""
+
+        def execute(self, statement):
+            from sqlalchemy.exc import OperationalError
+
+            raise OperationalError(
+                "SELECT users.secret FROM users", {}, Exception("no such column")
+            )
+
+    def test_driver_failures_are_translated(self, tenant_context):
+        repository = SqlAlchemyUserRepository(session=self.ExplodingSession())
+
+        with pytest.raises(RepositoryError) as caught:
+            repository.find_all(tenant_context)
+
+        assert "no such column" not in str(caught.value.to_dict())
+        assert caught.value.details["entity"] == "user"
+
+    def test_counting_failures_are_translated(self, tenant_context):
+        repository = SqlAlchemyUserRepository(session=self.ExplodingSession())
+
+        with pytest.raises(RepositoryError):
+            repository.count(tenant_context)
 
 
 class TestUnitOfWorkPorts:
