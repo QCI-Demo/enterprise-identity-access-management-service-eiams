@@ -10,7 +10,7 @@ from typing import Any
 
 from eiams.shared.kernel import TenantId, Timestamp
 from eiams.shared.context import RequestContext
-from eiams.domain.base import DomainEntity, Repository, DomainService
+from eiams.domain.base import DomainEntity, PlatformScopedRepository, DomainService
 
 
 class TenantStatus(str, Enum):
@@ -26,6 +26,11 @@ class Tenant(DomainEntity):
     """Tenant entity contract.
 
     Represents a tenant (customer/organization) in the multi-tenant system.
+
+    ``settings`` has no counterpart in the approved schema. Repositories
+    therefore read it back as an empty mapping and reject writes that carry
+    settings, rather than accepting them and silently discarding them. A
+    later schema epic owns adding durable tenant settings.
     """
 
     tenant_id: TenantId
@@ -35,6 +40,8 @@ class Tenant(DomainEntity):
     settings: dict[str, Any]
     created_at: Timestamp
     updated_at: Timestamp
+    slug: str | None = None
+    description: str | None = None
 
     @property
     def id(self) -> TenantId:
@@ -54,8 +61,13 @@ class Tenant(DomainEntity):
         return hash(self.tenant_id)
 
 
-class TenantRepository(Repository[Tenant, TenantId], ABC):
-    """Repository contract for tenant persistence operations."""
+class TenantRepository(PlatformScopedRepository[Tenant, TenantId], ABC):
+    """Repository contract for tenant persistence operations.
+
+    Tenants are the isolation boundary itself, so this repository is
+    platform scoped: it has no tenant predicate to bind. It still requires
+    an authenticated caller.
+    """
 
     @abstractmethod
     def find_by_name(self, context: RequestContext, name: str) -> Tenant | None:
@@ -63,10 +75,8 @@ class TenantRepository(Repository[Tenant, TenantId], ABC):
         ...
 
     @abstractmethod
-    def find_all(
-        self, context: RequestContext, offset: int = 0, limit: int = 100
-    ) -> list[Tenant]:
-        """Find all tenants with pagination."""
+    def find_by_slug(self, context: RequestContext, slug: str) -> Tenant | None:
+        """Find a tenant by its unique slug."""
         ...
 
     @abstractmethod
@@ -74,11 +84,6 @@ class TenantRepository(Repository[Tenant, TenantId], ABC):
         self, context: RequestContext, offset: int = 0, limit: int = 100
     ) -> list[Tenant]:
         """Find all active tenants with pagination."""
-        ...
-
-    @abstractmethod
-    def count(self, context: RequestContext) -> int:
-        """Count all tenants."""
         ...
 
 

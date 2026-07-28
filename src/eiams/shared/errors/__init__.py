@@ -9,6 +9,7 @@ from .domain_errors import (
     ValidationError,
     ContextError,
     TenantRequiredError,
+    TenantMismatchError,
     ActorRequiredError,
     InvalidTenantError,
     InvalidActorError,
@@ -17,12 +18,21 @@ from .domain_errors import (
     PermissionDeniedError,
     ErrorCode,
 )
+from .repository_errors import (
+    RepositoryError,
+    EntityNotFoundError,
+    DuplicateEntityError,
+    IntegrityViolationError,
+    TransactionError,
+    AppendOnlyViolationError,
+)
 
 __all__ = [
     "DomainError",
     "ValidationError",
     "ContextError",
     "TenantRequiredError",
+    "TenantMismatchError",
     "ActorRequiredError",
     "InvalidTenantError",
     "InvalidActorError",
@@ -30,4 +40,10 @@ __all__ = [
     "AuthorizationError",
     "PermissionDeniedError",
     "ErrorCode",
+    "RepositoryError",
+    "EntityNotFoundError",
+    "DuplicateEntityError",
+    "IntegrityViolationError",
+    "TransactionError",
+    "AppendOnlyViolationError",
 ]
