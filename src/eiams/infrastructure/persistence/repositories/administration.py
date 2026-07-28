@@ -1,10 +1,6 @@
 """Platform-scoped repository for the tenant registry."""
 
-from eiams.domain.administration.contracts import (
-    Tenant,
-    TenantRepository,
-    TenantStatus,
-)
+from eiams.domain.administration.contracts import Tenant, TenantRepository
 from eiams.infrastructure.persistence.models import tenant as tenant_models
 from eiams.shared.context import RequestContext
 from eiams.shared.kernel import TenantId

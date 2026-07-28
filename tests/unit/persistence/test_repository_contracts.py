@@ -12,7 +12,6 @@ from uuid import uuid4
 import pytest
 
 from eiams.application.ports import TransactionRunnerPort, UnitOfWorkPort
-from eiams.domain.administration.contracts import TenantRepository
 from eiams.domain.audit.contracts import AuditEventRepository
 from eiams.domain.base import (
     AppendOnlyRepository,

@@ -10,12 +10,7 @@ from typing import Any
 
 from eiams.shared.kernel import EntityId, TenantId, Timestamp
 from eiams.shared.context import RequestContext
-from eiams.domain.base import (
-    AppendOnlyRepository,
-    DomainEntity,
-    DomainEvent,
-    DomainService,
-)
+from eiams.domain.base import AppendOnlyRepository, DomainService
 from eiams.domain.identity.contracts import UserId
 
 

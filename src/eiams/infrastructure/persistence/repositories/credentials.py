@@ -8,7 +8,6 @@ from eiams.domain.credentials.contracts import (
     ApiKey,
     ApiKeyId,
     ApiKeyRepository,
-    ApiKeyStatus,
     CredentialId,
     CredentialType,
     OAuthClient,

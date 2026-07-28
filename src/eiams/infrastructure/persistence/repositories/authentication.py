@@ -9,7 +9,6 @@ from eiams.domain.authentication.contracts import (
     Session,
     SessionId,
     SessionRepository,
-    SessionStatus,
 )
 from eiams.domain.identity.contracts import UserId
 from eiams.infrastructure.persistence.models import (

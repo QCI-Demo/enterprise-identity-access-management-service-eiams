@@ -355,3 +355,76 @@ class TestScopeFailuresAbortTheTransaction:
         with pytest.raises(ContextError):
             with runner.unit_of_work(None):
                 pass
+
+
+class TestExplicitFlush:
+    """Flushing surfaces violations without ending the transaction."""
+
+    @staticmethod
+    def _stage_conflicting_rows(uow, tenant_id: str, email: str) -> None:
+        """Queue two colliding rows on the shared session without flushing.
+
+        An adapter that stages rows itself rather than through a repository
+        reaches the unit of work's own flush, which must classify the
+        failure the same way a repository write would.
+        """
+        from eiams.infrastructure.persistence.models import identity as models
+
+        for _ in range(2):
+            uow.session.add(
+                models.User(
+                    id=new_id(),
+                    tenant_id=tenant_id,
+                    email=email,
+                    display_name="Staged",
+                    status=models.UserStatus.ACTIVE,
+                )
+            )
+
+    def test_flush_reports_a_conflict_as_a_domain_error(
+        self, runner, alpha_context, tenants
+    ):
+        with pytest.raises(DuplicateEntityError):
+            with runner.unit_of_work(alpha_context) as uow:
+                self._stage_conflicting_rows(
+                    uow, tenants.alpha, "flush@alpha.example"
+                )
+                uow.flush()
+
+    def test_a_failed_flush_still_rolls_the_transaction_back(
+        self, runner, alpha_context, tenants, row_counts
+    ):
+        with pytest.raises(DuplicateEntityError):
+            with runner.unit_of_work(alpha_context) as uow:
+                self._stage_conflicting_rows(
+                    uow, tenants.alpha, "rolled@alpha.example"
+                )
+                uow.flush()
+
+        assert row_counts("users") == 0
+
+
+class TestRunnerConstruction:
+    """A runner can be built from a configured database manager."""
+
+    def test_from_manager_opens_working_transactions(
+        self, engine, alpha_context, tenants, row_counts
+    ):
+        from eiams.infrastructure.persistence.database import (
+            DatabaseConfig,
+            DatabaseManager,
+        )
+        from eiams.infrastructure.persistence.transaction import (
+            SqlAlchemyTransactionRunner,
+        )
+
+        manager = DatabaseManager(DatabaseConfig(url=str(engine.url)))
+        runner = SqlAlchemyTransactionRunner.from_manager(manager)
+
+        with runner.unit_of_work(alpha_context) as uow:
+            uow.users.add(
+                alpha_context, build_user(tenants.alpha, email="manager@alpha.example")
+            )
+        manager.dispose()
+
+        assert row_counts("users") == 1
