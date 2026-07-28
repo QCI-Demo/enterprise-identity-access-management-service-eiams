@@ -17,6 +17,10 @@ from .base import (
     DomainEntity,
     DomainEvent,
     Repository,
+    ReadableRepository,
+    PlatformScopedRepository,
+    TenantScopedRepository,
+    AppendOnlyRepository,
     DomainService,
 )
 
@@ -24,5 +28,9 @@ __all__ = [
     "DomainEntity",
     "DomainEvent",
     "Repository",
+    "ReadableRepository",
+    "PlatformScopedRepository",
+    "TenantScopedRepository",
+    "AppendOnlyRepository",
     "DomainService",
 ]

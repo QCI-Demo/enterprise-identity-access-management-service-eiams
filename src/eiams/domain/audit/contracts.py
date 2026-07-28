@@ -10,7 +10,12 @@ from typing import Any
 
 from eiams.shared.kernel import EntityId, TenantId, Timestamp
 from eiams.shared.context import RequestContext
-from eiams.domain.base import DomainEntity, DomainEvent, Repository, DomainService
+from eiams.domain.base import (
+    AppendOnlyRepository,
+    DomainEntity,
+    DomainEvent,
+    DomainService,
+)
 from eiams.domain.identity.contracts import UserId
 
 
@@ -20,7 +25,12 @@ class AuditEventId(EntityId):
 
 
 class AuditEventType(str, Enum):
-    """Type of audit event."""
+    """Type of audit event.
+
+    The members mirror the vocabulary the approved audit schema persists, so
+    that an event written by any module reads back as the same type.
+    """
+
     # Authentication events
     LOGIN_SUCCESS = "login_success"
     LOGIN_FAILURE = "login_failure"
@@ -29,6 +39,7 @@ class AuditEventType(str, Enum):
     SESSION_REVOKED = "session_revoked"
     TOKEN_ISSUED = "token_issued"
     TOKEN_REFRESHED = "token_refreshed"
+    TOKEN_REVOKED = "token_revoked"
 
     # Authorization events
     PERMISSION_GRANTED = "permission_granted"
@@ -42,21 +53,53 @@ class AuditEventType(str, Enum):
     USER_DELETED = "user_deleted"
     USER_STATUS_CHANGED = "user_status_changed"
 
+    # Organization events
+    ORGANIZATION_CREATED = "organization_created"
+    ORGANIZATION_UPDATED = "organization_updated"
+    ORGANIZATION_DELETED = "organization_deleted"
+
+    # Membership events
+    MEMBERSHIP_CREATED = "membership_created"
+    MEMBERSHIP_UPDATED = "membership_updated"
+    MEMBERSHIP_REMOVED = "membership_removed"
+
     # Credential events
     PASSWORD_CHANGED = "password_changed"
+    PASSWORD_RESET_REQUESTED = "password_reset_requested"
+    PASSWORD_RESET_COMPLETED = "password_reset_completed"
     API_KEY_CREATED = "api_key_created"
     API_KEY_REVOKED = "api_key_revoked"
-    CLIENT_CREATED = "client_created"
-    CLIENT_SECRET_ROTATED = "client_secret_rotated"
+    OAUTH_CLIENT_CREATED = "oauth_client_created"
+    OAUTH_CLIENT_UPDATED = "oauth_client_updated"
+    OAUTH_CLIENT_SECRET_ROTATED = "oauth_client_secret_rotated"
 
     # Administrative events
     TENANT_CREATED = "tenant_created"
     TENANT_UPDATED = "tenant_updated"
+    TENANT_SUSPENDED = "tenant_suspended"
     CONFIGURATION_CHANGED = "configuration_changed"
 
     # System events
     SYSTEM_ERROR = "system_error"
     SECURITY_ALERT = "security_alert"
+    RATE_LIMIT_EXCEEDED = "rate_limit_exceeded"
+
+
+class AuditOutcome(str, Enum):
+    """Outcome recorded on an audit event."""
+    SUCCESS = "success"
+    FAILURE = "failure"
+    ERROR = "error"
+    DENIED = "denied"
+    TIMEOUT = "timeout"
+
+
+class AuditActorType(str, Enum):
+    """Kind of actor recorded on an audit event."""
+    USER = "user"
+    SERVICE = "service"
+    SYSTEM = "system"
+    ANONYMOUS = "anonymous"
 
 
 class AuditSeverity(str, Enum):
@@ -92,6 +135,9 @@ class AuditEvent:
     resource_id: str | None = None
     ip_address: str | None = None
     user_agent: str | None = None
+    actor_type: AuditActorType = AuditActorType.USER
+    error_code: str | None = None
+    error_message: str | None = None
 
     @property
     def id(self) -> EntityId:
@@ -122,6 +168,8 @@ class AuditEvent:
             "correlation_id": self.correlation_id_value,
             "ip_address": self.ip_address,
             "user_agent": self.user_agent,
+            "actor_type": self.actor_type.value,
+            "error_code": self.error_code,
             "timestamp": self.timestamp.to_iso(),
         }
 
@@ -134,11 +182,16 @@ class AuditEvent:
         return hash(self.audit_event_id)
 
 
-class AuditEventRepository(Repository[AuditEvent, AuditEventId], ABC):
+class AuditEventRepository(AppendOnlyRepository[AuditEvent, AuditEventId], ABC):
     """Repository contract for audit event persistence operations.
 
-    Note: Audit events are append-only. Update and delete operations
-    should raise NotImplementedError to maintain immutability.
+    Audit events are immutable once written. This interface exposes only
+    append and read primitives; there is deliberately no update or delete
+    operation to call, so an audit record cannot be rewritten or erased
+    through the repository at all.
+
+    Reads are tenant scoped. Events written outside any tenant (system
+    events) are not visible through tenant-scoped reads.
     """
 
     @abstractmethod

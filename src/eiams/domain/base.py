@@ -6,10 +6,10 @@ no dependencies on persistence or web frameworks.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Generic, TypeVar
+from typing import Any, ClassVar, Generic, TypeVar
 
 from eiams.shared.kernel import EntityId, Timestamp
-from eiams.shared.context import RequestContext
+from eiams.shared.context import RepositoryScope, RequestContext, TenantPredicate
 
 
 T = TypeVar("T", bound="DomainEntity")
@@ -116,6 +116,114 @@ class Repository(ABC, Generic[T, ID]):
         Returns:
             True if the entity was deleted, False if not found.
         """
+        ...
+
+
+class ReadableRepository(ABC, Generic[T, ID]):
+    """Read primitives shared by every repository regardless of scope."""
+
+    #: Isolation scope every operation of the repository runs in.
+    scope: ClassVar[RepositoryScope]
+
+    @abstractmethod
+    def exists(self, context: RequestContext, entity_id: ID) -> bool:
+        """Check whether an entity is visible in the caller's scope.
+
+        Args:
+            context: Request context for scope resolution and audit.
+            entity_id: The unique identifier of the entity.
+
+        Returns:
+            True if the entity exists and is in scope, False otherwise.
+        """
+        ...
+
+    @abstractmethod
+    def find_all(
+        self, context: RequestContext, offset: int = 0, limit: int = 100
+    ) -> list[T]:
+        """List entities visible in the caller's scope, most recent first.
+
+        Args:
+            context: Request context for scope resolution and audit.
+            offset: Number of entities to skip.
+            limit: Maximum number of entities to return.
+
+        Returns:
+            The entities in scope for the requested page.
+        """
+        ...
+
+    @abstractmethod
+    def count(self, context: RequestContext) -> int:
+        """Count the entities visible in the caller's scope."""
+        ...
+
+
+class PlatformScopedRepository(Repository[T, ID], ReadableRepository[T, ID], ABC):
+    """Contract for repositories that intentionally span tenants.
+
+    Platform scope is reserved for entity groups the schema does not place
+    inside a tenant, such as the tenant registry itself. Implementations
+    still require an authenticated caller; they simply do not bind a tenant
+    predicate because the data has no tenant owner.
+    """
+
+    scope: ClassVar[RepositoryScope] = RepositoryScope.PLATFORM
+
+
+class TenantScopedRepository(Repository[T, ID], ReadableRepository[T, ID], ABC):
+    """Contract for repositories confined to a single validated tenant.
+
+    Every operation resolves tenant scope from the request context and binds
+    the resulting predicate before any lookup, filter, or mutation runs.
+    Absent tenant context is a hard failure, never a full-table operation.
+    """
+
+    scope: ClassVar[RepositoryScope] = RepositoryScope.TENANT
+
+    @abstractmethod
+    def tenant_predicate(self, context: RequestContext) -> TenantPredicate:
+        """Build the tenant filter bound to every operation of this repository.
+
+        Args:
+            context: Request context supplying tenant scope.
+
+        Returns:
+            The predicate constraining reads and writes to one tenant.
+
+        Raises:
+            TenantRequiredError: If the context carries no tenant scope.
+        """
+        ...
+
+
+class AppendOnlyRepository(ReadableRepository[T, ID], ABC):
+    """Contract for stores whose records are immutable once written.
+
+    Update and delete primitives are intentionally absent from this
+    interface rather than present and failing: callers cannot express a
+    mutation of an append-only record at all.
+    """
+
+    scope: ClassVar[RepositoryScope] = RepositoryScope.TENANT
+
+    @abstractmethod
+    def append(self, context: RequestContext, entity: T) -> T:
+        """Write a new immutable record.
+
+        Args:
+            context: Request context for scope resolution and audit.
+            entity: The record to append.
+
+        Returns:
+            The appended record.
+        """
+        ...
+
+    @abstractmethod
+    def find_by_id(self, context: RequestContext, entity_id: ID) -> T | None:
+        """Read a single record by identifier within the caller's scope."""
         ...
 
 
