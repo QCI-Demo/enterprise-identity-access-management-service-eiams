@@ -64,6 +64,8 @@ SHARED_KERNEL_ALLOWED_EXTERNAL = {
     "re",
     "uuid",
     "functools",
+    "__future__",
+    "json",
 }
 
 
