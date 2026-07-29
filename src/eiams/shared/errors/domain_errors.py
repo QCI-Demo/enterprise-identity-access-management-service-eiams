@@ -25,10 +25,17 @@ class ErrorCode(str, Enum):
     ACTOR_INVALID = "ACTOR_INVALID"
     CORRELATION_ID_INVALID = "CORRELATION_ID_INVALID"
 
+    # Authentication errors
+    AUTHENTICATION_FAILED = "AUTHENTICATION_FAILED"
+
     # Authorization errors
     PERMISSION_DENIED = "PERMISSION_DENIED"
     AUTHORIZATION_FAILED = "AUTHORIZATION_FAILED"
     INSUFFICIENT_PRIVILEGES = "INSUFFICIENT_PRIVILEGES"
+
+    # Configuration errors
+    CONFIGURATION_INVALID = "CONFIGURATION_INVALID"
+    CONFIGURATION_MISSING = "CONFIGURATION_MISSING"
 
     # Resource errors
     RESOURCE_NOT_FOUND = "RESOURCE_NOT_FOUND"
@@ -197,6 +204,80 @@ class AuthorizationError(DomainError):
         details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message, code, details)
+
+
+class AuthenticationError(DomainError):
+    """Base class for authentication-related errors."""
+
+    def __init__(
+        self,
+        message: str,
+        code: ErrorCode = ErrorCode.AUTHENTICATION_FAILED,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message, code, details)
+
+
+class AuthenticationFailedError(AuthenticationError):
+    """Error raised when an authentication attempt does not succeed.
+
+    This error is deliberately uniform: unknown identifiers, wrong
+    passwords, missing credentials, and ineligible account states all
+    produce the same message and carry no externally visible details.
+    The internal reason is retained as a private attribute for audit
+    and diagnostics but is never serialized.
+    """
+
+    SAFE_MESSAGE = "Authentication failed"
+
+    def __init__(self, reason: str | None = None) -> None:
+        super().__init__(self.SAFE_MESSAGE, ErrorCode.AUTHENTICATION_FAILED, {})
+        self._reason = reason
+
+    @property
+    def reason(self) -> str | None:
+        """Internal failure reason for audit use only."""
+        return self._reason
+
+    def __repr__(self) -> str:
+        return "AuthenticationFailedError(code=AUTHENTICATION_FAILED)"
+
+
+class ConfigurationError(DomainError):
+    """Error raised when configuration values are missing or invalid.
+
+    Only the configuration key is reported; values are never included
+    because configuration may carry sensitive material.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        key: str | None = None,
+        code: ErrorCode = ErrorCode.CONFIGURATION_INVALID,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        details = details or {}
+        if key:
+            details["configuration_key"] = key
+        super().__init__(message, code, details)
+        self._key = key
+
+    @property
+    def key(self) -> str | None:
+        """The configuration key that failed to resolve or validate."""
+        return self._key
+
+
+class MissingConfigurationError(ConfigurationError):
+    """Error raised when a required configuration value is absent."""
+
+    def __init__(self, key: str, message: str | None = None) -> None:
+        super().__init__(
+            message or f"Required configuration is missing: {key}",
+            key=key,
+            code=ErrorCode.CONFIGURATION_MISSING,
+        )
 
 
 class PermissionDeniedError(AuthorizationError):

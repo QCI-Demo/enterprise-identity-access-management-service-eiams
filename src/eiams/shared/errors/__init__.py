@@ -13,8 +13,12 @@ from .domain_errors import (
     InvalidTenantError,
     InvalidActorError,
     InvalidCorrelationIdError,
+    AuthenticationError,
+    AuthenticationFailedError,
     AuthorizationError,
     PermissionDeniedError,
+    ConfigurationError,
+    MissingConfigurationError,
     ErrorCode,
 )
 
@@ -42,8 +46,12 @@ __all__ = [
     "InvalidTenantError",
     "InvalidActorError",
     "InvalidCorrelationIdError",
+    "AuthenticationError",
+    "AuthenticationFailedError",
     "AuthorizationError",
     "PermissionDeniedError",
+    "ConfigurationError",
+    "MissingConfigurationError",
     "ErrorCode",
     # API errors
     "ApiError",

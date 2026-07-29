@@ -41,8 +41,17 @@ DEFAULT_SENSITIVE_KEYS: frozenset[str] = frozenset({
     "x-auth-token",
 })
 
+# Inline assignments such as "password=hunter2" or "client_secret: abc" that
+# appear inside free-text messages rather than as structured keys.
+INLINE_SECRET_ASSIGNMENT_PATTERN: re.Pattern[str] = re.compile(
+    r"(?i)\b(?:password|passwd|pwd|secret|client_secret|api[_-]?key|"
+    r"access_token|refresh_token|private_key|secret_key|credential)s?"
+    r"\s*[=:]\s*(?:\"[^\"]*\"|'[^']*'|\S+)"
+)
+
 # Patterns that detect sensitive values in content
 DEFAULT_SENSITIVE_PATTERNS: tuple[re.Pattern[str], ...] = (
+    INLINE_SECRET_ASSIGNMENT_PATTERN,
     # JWT pattern (header.payload.signature)
     re.compile(r"eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+"),
     # Bearer token pattern
@@ -69,12 +78,18 @@ class RedactionConfig:
         sensitive_patterns: Regex patterns to detect sensitive content.
         redacted_placeholder: String to replace sensitive values with.
         max_depth: Maximum recursion depth for nested structures.
+        safe_keys: Key names that carry no secret despite matching a
+            sensitive key by substring (for example ``token_issued``,
+            which is a boolean flag, not a token). Matching is exact and
+            case-insensitive, and values under these keys are still
+            scanned for sensitive content patterns.
     """
 
     sensitive_keys: frozenset[str] = DEFAULT_SENSITIVE_KEYS
     sensitive_patterns: tuple[re.Pattern[str], ...] = DEFAULT_SENSITIVE_PATTERNS
     redacted_placeholder: str = REDACTED_VALUE
     max_depth: int = 20
+    safe_keys: frozenset[str] = frozenset()
 
     def with_additional_keys(self, *keys: str) -> "RedactionConfig":
         """Create a new config with additional sensitive keys."""
@@ -83,6 +98,18 @@ class RedactionConfig:
             sensitive_patterns=self.sensitive_patterns,
             redacted_placeholder=self.redacted_placeholder,
             max_depth=self.max_depth,
+            safe_keys=self.safe_keys - frozenset(k.lower() for k in keys),
+        )
+
+    def with_safe_keys(self, *keys: str) -> "RedactionConfig":
+        """Create a new config with additional exactly-matched safe keys."""
+        additional = frozenset(k.lower() for k in keys)
+        return RedactionConfig(
+            sensitive_keys=self.sensitive_keys - additional,
+            sensitive_patterns=self.sensitive_patterns,
+            redacted_placeholder=self.redacted_placeholder,
+            max_depth=self.max_depth,
+            safe_keys=self.safe_keys | additional,
         )
 
 
@@ -106,6 +133,7 @@ class SecretRedactor:
         self._sensitive_keys_lower = frozenset(
             k.lower() for k in self._config.sensitive_keys
         )
+        self._safe_keys_lower = frozenset(k.lower() for k in self._config.safe_keys)
 
     @property
     def config(self) -> RedactionConfig:
@@ -183,6 +211,10 @@ class SecretRedactor:
     def _is_sensitive_key(self, key: str) -> bool:
         """Check if a key matches sensitive patterns."""
         key_lower = key.lower()
+
+        # Explicitly declared safe keys are exempt from substring matching
+        if key_lower in self._safe_keys_lower:
+            return False
 
         # Direct match
         if key_lower in self._sensitive_keys_lower:

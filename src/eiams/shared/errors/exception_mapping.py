@@ -16,7 +16,10 @@ from eiams.shared.errors.domain_errors import (
     ActorRequiredError,
     InvalidActorError,
     InvalidCorrelationIdError,
+    AuthenticationError,
+    AuthenticationFailedError,
     AuthorizationError,
+    ConfigurationError,
     PermissionDeniedError,
 )
 from eiams.shared.errors.api_errors import (
@@ -33,6 +36,12 @@ from eiams.shared.errors.api_errors import (
     InternalApiError,
 )
 from eiams.shared.logging.redaction import SecretRedactor
+
+
+# Single external message for every authentication failure so that
+# unknown identifiers, wrong passwords, and ineligible account states
+# are externally indistinguishable.
+INVALID_CREDENTIALS_MESSAGE = "Invalid credentials"
 
 
 class ExceptionMapper:
@@ -118,6 +127,28 @@ class ExceptionMapper:
     ) -> ApiError:
         """Map domain error to API error."""
         code = exc.code
+
+        # Authentication failures collapse to a single non-enumerating response
+        if isinstance(exc, AuthenticationFailedError):
+            return AuthenticationApiError(
+                message=INVALID_CREDENTIALS_MESSAGE,
+                code=ApiErrorCode.CREDENTIALS_INVALID,
+                correlation_id=correlation_id,
+            )
+
+        if isinstance(exc, AuthenticationError):
+            return AuthenticationApiError(
+                message=INVALID_CREDENTIALS_MESSAGE,
+                code=ApiErrorCode.AUTHENTICATION_FAILED,
+                correlation_id=correlation_id,
+            )
+
+        # Configuration problems are operator-facing only
+        if isinstance(exc, ConfigurationError):
+            return InternalApiError(
+                message="An unexpected error occurred",
+                correlation_id=correlation_id,
+            )
 
         # Validation errors
         if isinstance(exc, ValidationError):
