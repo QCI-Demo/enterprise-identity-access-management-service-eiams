@@ -365,6 +365,7 @@ class RequestContextFactory:
     def create_anonymous(
         *,
         correlation_id: str | CorrelationId | None = None,
+        tenant_id: str | TenantId | None = None,
         source_ip: str | None = None,
         user_agent: str | None = None,
         request_path: str | None = None,
@@ -374,13 +375,15 @@ class RequestContextFactory:
 
         Args:
             correlation_id: Request correlation ID (generated if not provided).
+            tenant_id: Tenant scope, when an unauthenticated request still
+                targets a specific tenant (for example, native login).
             source_ip: Client IP address.
             user_agent: Client user agent string.
             request_path: HTTP request path.
             request_method: HTTP request method.
 
         Returns:
-            RequestContext with anonymous actor and no tenant.
+            RequestContext with anonymous actor.
         """
         if correlation_id is None:
             parsed_correlation = CorrelationId.generate()
@@ -389,10 +392,18 @@ class RequestContextFactory:
         else:
             parsed_correlation = correlation_id
 
+        parsed_tenant: TenantContext | None = None
+        if tenant_id is not None:
+            if isinstance(tenant_id, str):
+                parsed_tenant_id = TenantId(tenant_id)
+            else:
+                parsed_tenant_id = tenant_id
+            parsed_tenant = TenantContext(tenant_id=parsed_tenant_id)
+
         return RequestContext(
             correlation_id=parsed_correlation,
             actor=ActorContext.anonymous(),
-            tenant=None,
+            tenant=parsed_tenant,
             metadata=RequestMetadata(
                 timestamp=Timestamp.now(),
                 source_ip=source_ip,

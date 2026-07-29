@@ -13,6 +13,10 @@ from .value_objects import (
     CorrelationId,
     Timestamp,
 )
+from .secrets import (
+    SecretString,
+    REDACTED_REPRESENTATION,
+)
 
 __all__ = [
     "ValueObject",
@@ -21,4 +25,6 @@ __all__ = [
     "ActorId",
     "CorrelationId",
     "Timestamp",
+    "SecretString",
+    "REDACTED_REPRESENTATION",
 ]

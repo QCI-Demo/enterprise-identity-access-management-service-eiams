@@ -14,8 +14,14 @@ from .contracts import (
     OAuthClient,
     OAuthClientId,
     OAuthClientType,
+    PasswordCredentialId,
+    PasswordHashAlgorithm,
+    PasswordVerificationOutcome,
+    PasswordVerificationResult,
+    StoredPasswordCredential,
     ApiKeyRepository,
     OAuthClientRepository,
+    PasswordCredentialRepository,
     CredentialService,
 )
 
@@ -26,7 +32,13 @@ __all__ = [
     "OAuthClient",
     "OAuthClientId",
     "OAuthClientType",
+    "PasswordCredentialId",
+    "PasswordHashAlgorithm",
+    "PasswordVerificationOutcome",
+    "PasswordVerificationResult",
+    "StoredPasswordCredential",
     "ApiKeyRepository",
     "OAuthClientRepository",
+    "PasswordCredentialRepository",
     "CredentialService",
 ]

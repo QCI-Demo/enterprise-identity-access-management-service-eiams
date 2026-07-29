@@ -8,6 +8,9 @@ Manages authentication flows and session lifecycle, including:
 """
 
 from .contracts import (
+    AuthenticationFailureCategory,
+    AuthenticationMethod,
+    AuthenticationOutcome,
     Session,
     SessionId,
     SessionStatus,
@@ -17,6 +20,9 @@ from .contracts import (
 )
 
 __all__ = [
+    "AuthenticationFailureCategory",
+    "AuthenticationMethod",
+    "AuthenticationOutcome",
     "Session",
     "SessionId",
     "SessionStatus",

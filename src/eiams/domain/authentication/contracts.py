@@ -27,6 +27,29 @@ class SessionStatus(str, Enum):
     LOGGED_OUT = "logged_out"
 
 
+class AuthenticationMethod(str, Enum):
+    """Mechanism used to authenticate a principal."""
+    PASSWORD = "password"
+
+
+class AuthenticationOutcome(str, Enum):
+    """Outcome recorded for an authentication attempt."""
+    SUCCESS = "success"
+    FAILURE = "failure"
+
+
+class AuthenticationFailureCategory(str, Enum):
+    """Coarse, externally safe classification of an authentication failure.
+
+    Deliberately coarse: unknown identifiers, wrong passwords, and absent
+    or malformed credentials all collapse into ``INVALID_CREDENTIALS`` so
+    that neither responses nor audit records reveal whether a given
+    identifier exists.
+    """
+    INVALID_CREDENTIALS = "invalid_credentials"
+    INELIGIBLE_ACCOUNT_STATE = "ineligible_account_state"
+
+
 @dataclass(frozen=True)
 class TokenClaims:
     """JWT token claims value object.

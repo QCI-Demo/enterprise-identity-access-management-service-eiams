@@ -9,8 +9,13 @@ Manages user and organization identity lifecycle, including:
 
 from .contracts import (
     User,
+    UserId,
+    UserStatus,
     Organization,
+    OrganizationId,
     Membership,
+    MembershipId,
+    MembershipStatus,
     UserRepository,
     OrganizationRepository,
     MembershipRepository,
@@ -19,8 +24,13 @@ from .contracts import (
 
 __all__ = [
     "User",
+    "UserId",
+    "UserStatus",
     "Organization",
+    "OrganizationId",
     "Membership",
+    "MembershipId",
+    "MembershipStatus",
     "UserRepository",
     "OrganizationRepository",
     "MembershipRepository",

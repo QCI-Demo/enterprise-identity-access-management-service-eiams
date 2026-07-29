@@ -6,8 +6,21 @@ on abstractions, not concrete implementations.
 """
 
 from .base import InputPort, OutputPort
+from .security import (
+    PasswordHasher,
+    ProtectedCredentialError,
+    MalformedProtectedCredentialError,
+    UnsupportedAlgorithmError,
+)
+from .transaction import UnitOfWork, UnitOfWorkFactory
 
 __all__ = [
     "InputPort",
     "OutputPort",
+    "PasswordHasher",
+    "ProtectedCredentialError",
+    "MalformedProtectedCredentialError",
+    "UnsupportedAlgorithmError",
+    "UnitOfWork",
+    "UnitOfWorkFactory",
 ]

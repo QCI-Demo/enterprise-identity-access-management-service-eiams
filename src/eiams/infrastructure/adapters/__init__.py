@@ -27,6 +27,24 @@ from .validation import (
     FieldValidator,
     ValidationAdapter,
 )
+from .audit_recording import RedactingAuditService
+from .http_api import (
+    API_BASE_PATH,
+    API_VERSION,
+    ApiEndpoint,
+    ApiRequest,
+    ApiResponse,
+    ApiRouter,
+    InvalidRequestBodyError,
+    parse_json_object,
+)
+from .login_api import (
+    LOGIN_METHOD,
+    LOGIN_PATH,
+    LoginEndpoint,
+    LoginRequestValidator,
+    create_login_endpoint,
+)
 
 __all__ = [
     # Transport
@@ -48,4 +66,21 @@ __all__ = [
     "CompositeValidator",
     "FieldValidator",
     "ValidationAdapter",
+    # Audit
+    "RedactingAuditService",
+    # HTTP API
+    "API_BASE_PATH",
+    "API_VERSION",
+    "ApiEndpoint",
+    "ApiRequest",
+    "ApiResponse",
+    "ApiRouter",
+    "InvalidRequestBodyError",
+    "parse_json_object",
+    # Login endpoint
+    "LOGIN_METHOD",
+    "LOGIN_PATH",
+    "LoginEndpoint",
+    "LoginRequestValidator",
+    "create_login_endpoint",
 ]

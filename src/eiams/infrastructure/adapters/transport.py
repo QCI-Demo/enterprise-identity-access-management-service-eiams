@@ -195,10 +195,11 @@ class HttpContextExtractor(TransportContextAdapter):
             path = self._extract_path(request)
             method = self._extract_method(request)
 
-            # Handle anonymous requests
+            # Handle anonymous requests, which may still be tenant-scoped
             if not actor_id:
                 return RequestContextFactory.create_anonymous(
                     correlation_id=correlation_id,
+                    tenant_id=tenant_id,
                     source_ip=client_ip,
                     user_agent=user_agent,
                     request_path=path,
