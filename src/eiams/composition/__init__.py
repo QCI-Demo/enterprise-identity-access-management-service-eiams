@@ -9,9 +9,15 @@ from .container import (
     ModuleRegistry,
     create_container,
 )
+from .authentication import (
+    AuthenticationComponents,
+    create_authentication_components,
+)
 
 __all__ = [
     "ModuleContainer",
     "ModuleRegistry",
     "create_container",
+    "AuthenticationComponents",
+    "create_authentication_components",
 ]
