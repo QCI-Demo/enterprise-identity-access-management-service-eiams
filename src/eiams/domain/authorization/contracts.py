@@ -11,7 +11,7 @@ from typing import Any, Protocol
 
 from eiams.shared.kernel import EntityId, TenantId, Timestamp
 from eiams.shared.context import RequestContext
-from eiams.domain.base import DomainEntity, Repository, DomainService
+from eiams.domain.base import DomainEntity, TenantScopedRepository, DomainService
 from eiams.domain.identity.contracts import UserId
 
 
@@ -74,6 +74,7 @@ class Permission(DomainEntity):
     resource_type: str
     action: str
     created_at: Timestamp
+    is_system_permission: bool = False
 
     @property
     def id(self) -> EntityId:
@@ -127,6 +128,11 @@ class RoleAssignment(DomainEntity):
     """Role assignment entity contract.
 
     Represents the assignment of a role to a user within a scope.
+
+    ``scope`` identifies the resource the assignment is restricted to and
+    ``scope_type`` names what kind of resource that is. The schema requires
+    both or neither, so repositories default ``scope_type`` to
+    ``"organization"`` when only a scope identifier is supplied.
     """
 
     assignment_id: RoleAssignmentId
@@ -136,6 +142,13 @@ class RoleAssignment(DomainEntity):
     scope: str | None  # Optional scope restriction (e.g., organization ID)
     created_at: Timestamp
     expires_at: Timestamp | None
+    scope_type: str | None = None
+    revoked_at: Timestamp | None = None
+
+    @property
+    def is_revoked(self) -> bool:
+        """Check if the assignment has been revoked."""
+        return self.revoked_at is not None
 
     @property
     def id(self) -> EntityId:
@@ -157,8 +170,13 @@ class RoleAssignment(DomainEntity):
         return hash(self.assignment_id)
 
 
-class RoleRepository(Repository[Role, RoleId], ABC):
-    """Repository contract for role persistence operations."""
+class RoleRepository(TenantScopedRepository[Role, RoleId], ABC):
+    """Repository contract for role persistence operations.
+
+    Reads cover the tenant's own roles plus the platform-shared system role
+    catalogue. Writes are always confined to the tenant in context; system
+    roles cannot be modified through this repository.
+    """
 
     @abstractmethod
     def find_by_name(
@@ -172,16 +190,13 @@ class RoleRepository(Repository[Role, RoleId], ABC):
         """Find all system-defined roles."""
         ...
 
-    @abstractmethod
-    def find_all(
-        self, context: RequestContext, offset: int = 0, limit: int = 100
-    ) -> list[Role]:
-        """Find all roles within the tenant scope with pagination."""
-        ...
 
+class PermissionRepository(TenantScopedRepository[Permission, PermissionId], ABC):
+    """Repository contract for permission persistence operations.
 
-class PermissionRepository(Repository[Permission, PermissionId], ABC):
-    """Repository contract for permission persistence operations."""
+    As with roles, reads include the platform-shared system permission
+    catalogue while writes stay inside the tenant in context.
+    """
 
     @abstractmethod
     def find_by_key(
@@ -197,15 +212,10 @@ class PermissionRepository(Repository[Permission, PermissionId], ABC):
         """Find all permissions for a resource type."""
         ...
 
-    @abstractmethod
-    def find_all(
-        self, context: RequestContext, offset: int = 0, limit: int = 100
-    ) -> list[Permission]:
-        """Find all permissions with pagination."""
-        ...
 
-
-class RoleAssignmentRepository(Repository[RoleAssignment, RoleAssignmentId], ABC):
+class RoleAssignmentRepository(
+    TenantScopedRepository[RoleAssignment, RoleAssignmentId], ABC
+):
     """Repository contract for role assignment persistence operations."""
 
     @abstractmethod

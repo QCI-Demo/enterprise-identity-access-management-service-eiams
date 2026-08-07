@@ -14,10 +14,21 @@ from .request_context import (
     RequestMetadata,
     ActorType,
 )
+from .scope import (
+    RepositoryScope,
+    TenantPredicate,
+)
 from .guards import (
+    DEFAULT_TENANT_COLUMN,
     require_tenant,
     require_actor,
     require_context,
+    require_tenant_scope,
+    require_platform_scope,
+    build_tenant_predicate,
+    assert_tenant_match,
+    tenant_required,
+    actor_required,
 )
 
 __all__ = [
@@ -28,8 +39,18 @@ __all__ = [
     "RequestContextFactory",
     "RequestMetadata",
     "ActorType",
+    # Scope
+    "RepositoryScope",
+    "TenantPredicate",
+    "DEFAULT_TENANT_COLUMN",
     # Guards
     "require_tenant",
     "require_actor",
     "require_context",
+    "require_tenant_scope",
+    "require_platform_scope",
+    "build_tenant_predicate",
+    "assert_tenant_match",
+    "tenant_required",
+    "actor_required",
 ]

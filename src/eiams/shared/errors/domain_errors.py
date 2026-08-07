@@ -21,6 +21,7 @@ class ErrorCode(str, Enum):
     CONTEXT_INVALID = "CONTEXT_INVALID"
     TENANT_REQUIRED = "TENANT_REQUIRED"
     TENANT_INVALID = "TENANT_INVALID"
+    TENANT_MISMATCH = "TENANT_MISMATCH"
     ACTOR_REQUIRED = "ACTOR_REQUIRED"
     ACTOR_INVALID = "ACTOR_INVALID"
     CORRELATION_ID_INVALID = "CORRELATION_ID_INVALID"
@@ -34,6 +35,11 @@ class ErrorCode(str, Enum):
     RESOURCE_NOT_FOUND = "RESOURCE_NOT_FOUND"
     RESOURCE_ALREADY_EXISTS = "RESOURCE_ALREADY_EXISTS"
     RESOURCE_CONFLICT = "RESOURCE_CONFLICT"
+
+    # Persistence errors
+    PERSISTENCE_ERROR = "PERSISTENCE_ERROR"
+    TRANSACTION_FAILED = "TRANSACTION_FAILED"
+    OPERATION_NOT_PERMITTED = "OPERATION_NOT_PERMITTED"
 
 
 class DomainError(Exception):
@@ -144,6 +150,32 @@ class InvalidTenantError(ContextError):
         if tenant_id is not None:
             details["tenant_id"] = tenant_id
         super().__init__(message, ErrorCode.TENANT_INVALID, details)
+
+
+class TenantMismatchError(ContextError):
+    """Error raised when a resource does not belong to the context tenant.
+
+    The identifier of the owning tenant is deliberately excluded from the
+    error details: reporting it back to a caller from another tenant would
+    disclose the existence and ownership of a resource outside their scope.
+    """
+
+    def __init__(
+        self,
+        message: str = "Resource does not belong to the current tenant",
+        expected_tenant_id: str | None = None,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        details = details or {}
+        if expected_tenant_id is not None:
+            details["expected_tenant_id"] = expected_tenant_id
+        if resource_type is not None:
+            details["resource_type"] = resource_type
+        if resource_id is not None:
+            details["resource_id"] = resource_id
+        super().__init__(message, ErrorCode.TENANT_MISMATCH, details)
 
 
 class ActorRequiredError(ContextError):
