@@ -45,6 +45,18 @@ class MembershipStatus(str, Enum):
     PENDING = "pending"
 
 
+class OrganizationStatus(str, Enum):
+    """Lifecycle status of an organization.
+
+    The approved organization schema has no durable status column, so
+    repositories materialize existing rows as ``ACTIVE``. Deactivation is a
+    terminal transition that removes the organization from the tenant scope.
+    """
+
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+
+
 @dataclass(frozen=True)
 class User(DomainEntity):
     """User identity entity contract.
@@ -93,10 +105,16 @@ class Organization(DomainEntity):
     created_at: Timestamp
     updated_at: Timestamp
     slug: str | None = None
+    status: OrganizationStatus = OrganizationStatus.ACTIVE
 
     @property
     def id(self) -> EntityId:
         return self.organization_id
+
+    @property
+    def is_active(self) -> bool:
+        """Check if the organization is currently active."""
+        return self.status == OrganizationStatus.ACTIVE
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Organization):
