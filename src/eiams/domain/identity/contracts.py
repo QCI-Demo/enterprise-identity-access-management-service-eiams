@@ -12,7 +12,7 @@ from typing import Any
 
 from eiams.shared.kernel import EntityId, TenantId, Timestamp
 from eiams.shared.context import RequestContext
-from eiams.domain.base import DomainEntity, Repository, DomainService
+from eiams.domain.base import DomainEntity, TenantScopedRepository, DomainService
 
 
 class UserId(EntityId):
@@ -45,6 +45,18 @@ class MembershipStatus(str, Enum):
     PENDING = "pending"
 
 
+class OrganizationStatus(str, Enum):
+    """Lifecycle status of an organization.
+
+    The approved organization schema has no durable status column, so
+    repositories materialize existing rows as ``ACTIVE``. Deactivation is a
+    terminal transition that removes the organization from the tenant scope.
+    """
+
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+
+
 @dataclass(frozen=True)
 class User(DomainEntity):
     """User identity entity contract.
@@ -60,6 +72,9 @@ class User(DomainEntity):
     status: UserStatus
     created_at: Timestamp
     updated_at: Timestamp
+    username: str | None = None
+    email_verified_at: Timestamp | None = None
+    last_login_at: Timestamp | None = None
 
     @property
     def id(self) -> EntityId:
@@ -89,10 +104,17 @@ class Organization(DomainEntity):
     parent_id: OrganizationId | None
     created_at: Timestamp
     updated_at: Timestamp
+    slug: str | None = None
+    status: OrganizationStatus = OrganizationStatus.ACTIVE
 
     @property
     def id(self) -> EntityId:
         return self.organization_id
+
+    @property
+    def is_active(self) -> bool:
+        """Check if the organization is currently active."""
+        return self.status == OrganizationStatus.ACTIVE
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Organization):
@@ -133,7 +155,7 @@ class Membership(DomainEntity):
         return hash(self.membership_id)
 
 
-class UserRepository(Repository[User, UserId], ABC):
+class UserRepository(TenantScopedRepository[User, UserId], ABC):
     """Repository contract for user persistence operations."""
 
     @abstractmethod
@@ -144,19 +166,20 @@ class UserRepository(Repository[User, UserId], ABC):
         ...
 
     @abstractmethod
-    def find_all(
-        self, context: RequestContext, offset: int = 0, limit: int = 100
+    def find_by_status(
+        self,
+        context: RequestContext,
+        status: UserStatus,
+        offset: int = 0,
+        limit: int = 100,
     ) -> list[User]:
-        """Find all users within the tenant scope with pagination."""
-        ...
-
-    @abstractmethod
-    def count(self, context: RequestContext) -> int:
-        """Count all users within the tenant scope."""
+        """Find users with a given status within the tenant scope."""
         ...
 
 
-class OrganizationRepository(Repository[Organization, OrganizationId], ABC):
+class OrganizationRepository(
+    TenantScopedRepository[Organization, OrganizationId], ABC
+):
     """Repository contract for organization persistence operations."""
 
     @abstractmethod
@@ -173,15 +196,8 @@ class OrganizationRepository(Repository[Organization, OrganizationId], ABC):
         """Find all child organizations of a parent."""
         ...
 
-    @abstractmethod
-    def find_all(
-        self, context: RequestContext, offset: int = 0, limit: int = 100
-    ) -> list[Organization]:
-        """Find all organizations within the tenant scope with pagination."""
-        ...
 
-
-class MembershipRepository(Repository[Membership, MembershipId], ABC):
+class MembershipRepository(TenantScopedRepository[Membership, MembershipId], ABC):
     """Repository contract for membership persistence operations."""
 
     @abstractmethod

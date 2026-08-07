@@ -12,6 +12,7 @@ from eiams.shared.errors.domain_errors import (
     ValidationError,
     ContextError,
     TenantRequiredError,
+    TenantMismatchError,
     InvalidTenantError,
     ActorRequiredError,
     InvalidActorError,
@@ -145,7 +146,9 @@ class ExceptionMapper:
                 correlation_id=correlation_id,
             )
 
-        if isinstance(exc, (TenantRequiredError, InvalidTenantError)):
+        if isinstance(
+            exc, (TenantRequiredError, InvalidTenantError, TenantMismatchError)
+        ):
             return AuthorizationApiError(
                 message=self._safe_message(exc.message, "Tenant access required"),
                 code=ApiErrorCode.TENANT_ACCESS_DENIED,
@@ -283,6 +286,11 @@ class ExceptionMapper:
             "resource_id",
             "valid_types",
             "valid_values",
+            "source",
+            "target",
+            "status",
+            "conflicting_fields",
+            "entity",
         }
 
         return {k: v for k, v in redacted.items() if k in safe_keys}

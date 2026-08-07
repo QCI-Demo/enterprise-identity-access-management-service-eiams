@@ -6,8 +6,24 @@ on abstractions, not concrete implementations.
 """
 
 from .base import InputPort, OutputPort
+from .repository import (
+    AppendOnlyRepository,
+    PlatformScopedRepository,
+    ReadableRepository,
+    Repository,
+    TenantScopedRepository,
+    TransactionRunnerPort,
+    UnitOfWorkPort,
+)
 
 __all__ = [
     "InputPort",
     "OutputPort",
+    "Repository",
+    "ReadableRepository",
+    "PlatformScopedRepository",
+    "TenantScopedRepository",
+    "AppendOnlyRepository",
+    "UnitOfWorkPort",
+    "TransactionRunnerPort",
 ]
